@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head><meta charset="utf-8">
+    <title>LA Traffic Collision - D3 Visualization</title>
+<style>
+
+body {
+  margin: 0;
+  font-family: Verdana;
+}
+
+path {
+  fill: none;
+  stroke: red;
+  stroke-linejoin: round;
+  stroke-width: 0.8px;
+}
+.page {
+              max-width: 1000px;
+              margin: 80px auto;
+              background-color: #ffffff;
+              height: 1000px;
+              box-shadow: 6px 10px 28px 0px rgba(0,0,0,0.4);
+            }
+
+.topnav {
+        overflow: hidden;
+		background-color:  #34495e; 
+		padding: 10px 20px 10px 20px;
+      }
+
+      .topnav a {
+        float: left;
+        color: #ffffff ;
+        text-align: center;
+        padding: 14px 16px;
+        text-decoration: none;
+        font-size: 17px;
+      }
+
+      .topnav a:hover {
+        background-color: #ddd;
+        color: black;
+      }
+
+      .topnav a.active {
+        color: #fad7a0;
+      }
+.header{
+		background-color:  #7fb3d5;
+		}
+
+
+</style>
+</head>
+<body class = "page">
+<div class= "header">
+  <h1>&nbsp;</h1>
+        <h1><center>Los Angeles Traffic Collision</center></h1>
+            <!-- <div id="drop" align=center>Filter: </div> -->
+            <br>
+            <br>
+            
+        <div class="topnav">
+       <a href="../index.html">Back to Homepage</a>
+    </div>
+</div>	
+    <br>
+    <br>
+<svg></svg>
+
+<!-- <script type="text/javascript" src="https://d3js.org/d3.v5.min.js"></script> -->
+<script src="//d3js.org/d3.v4.min.js"></script>
+<script src="//d3js.org/d3-tile.v0.0.min.js"></script>
+<script src="//d3js.org/topojson.v1.min.js"></script>
+<script>
+
+var pi = Math.PI,
+    tau = 2 * pi;
+
+var width = 1000;
+var height = 600;
+
+// Initialize the projection to fit the world in a 1×1 square centered at the origin.
+var projection = d3.geoMercator()
+    .scale(1 / tau)
+    .translate([0, 0]);
+
+var path = d3.geoPath()
+    .projection(projection);
+
+var tile = d3.tile()
+    .size([width, height]);
+
+var zoom = d3.zoom()
+    .scaleExtent([1 << 15, 1 << 20])
+    .on("zoom", zoomed);
+
+var svg = d3.select("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var raster = svg.append("g");
+
+var vector = svg.append("path");
+
+d3.csv("cleanedData_v1.csv", type1, function(error, LA_Data) {
+  if (error) throw error;
+
+  vector
+      .datum({type: "FeatureCollection", features: LA_Data});
+
+  // Compute the projected initial center.
+  var center = projection([-118.2437, 34.0522]);
+
+  // Apply a zoom transform equivalent to projection.{scale,translate,center}.
+  svg
+      .call(zoom)
+      .call(zoom.transform, d3.zoomIdentity
+          .translate(width / 2, height / 2)
+          .scale(1 << 18)
+          .translate(-center[0], -center[1]));
+
+});
+
+
+
+function zoomed() {
+  var transform = d3.event.transform;
+
+  var tiles = tile
+      .scale(transform.k)
+      .translate([transform.x, transform.y])
+      ();
+
+  projection
+      .scale(transform.k / tau)
+      .translate([transform.x, transform.y]);
+
+  vector
+      .attr("d", path);
+
+  var image = raster
+    .attr("transform", stringify(tiles.scale, tiles.translate))
+    .selectAll("image")
+    .data(tiles, function(d) { return d; });
+
+  image.exit().remove();
+
+  image.enter().append("image")
+      .attr("xlink:href", function(d) { return "http://" + "abc"[d[1] % 3] + ".tile.openstreetmap.org/" + d[2] + "/" + d[0] + "/" + d[1] + ".png"; })
+      .attr("x", function(d) { return d[0] * 256; })
+      .attr("y", function(d) { return d[1] * 256; })
+      .attr("width", 256)
+      .attr("height", 256);
+}
+
+function type1(d) {
+  return {
+    type: "Feature",
+    properties: {name: d.AreaName 
+    },
+    geometry: {type: "Point", coordinates: [+d.Longitude, +d.Latitude]}
+  };
+}
+
+function stringify(scale, translate) {
+  var k = scale / 256, r = scale % 1 ? Number : Math.round;
+  return "translate(" + r(translate[0] * scale) + "," + r(translate[1] * scale) + ") scale(" + k + ")";
+}
+
+
+</script>
+</body>
+</html>

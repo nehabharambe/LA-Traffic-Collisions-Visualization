@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+
+<html lang="en">
+    <head><meta charset="utf-8">
+    	<meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>LA Traffic Collision - D3 Visualization</title>
+        <script type="text/javascript" src="https://d3js.org/d3.v5.min.js"></script>
+        <script src="https://unpkg.com/d3-tile@0.0"></script>
+        <script type="text/javascript" src="dataSource.js"></script>
+        <link rel="stylesheet" type="text/css" href="LA_trafficCollision.CSS">
+        
+    </head>
+    <body class = "page">
+		<div class= "header">
+    	<h1>&nbsp;</h1>
+        <h1><center>Los Angeles Traffic Collision (Statistics)</center></h1>
+        <div class="topnav">
+        	<a href="../LA_Map.html">LA Map</a>
+ 			 <a class="active" href="#current">HOME</a>
+ 			 
+		</div>
+		</div>
+		<div class="dataDescription">
+		<h3>Data Description:</h3>
+		<p>Los Angeles Traffic Collision dataset reflects traffic collision incidents from City of Los Angeles for the year of 2018. The dataset is hosted by City of Los Angeles on their data portal.
+			The dataset contains features such as Date of incident, Age, Gender & Ethnicity of people involved along with the location of the incident.
+			For the purpose of this visualization, 8000 obervations are used to display interesting facts from the collected data. </p>
+		<p>This visualization can be used to get traffic collision information based on
+
+        <ol>
+        <li>Month</li>
+        <li>Area</li>
+        <li>Gender</li>
+        <li>Ethnicity</li>
+        <li>Age Range</li>
+        </ol>
+
+        In addition, refer to Los Angeles Traffic Collision map on next page. (This map is created based on the geocode information from the dataset can be zoomed in and zoom out). 
+
+        Furthermore, all of these charts are filterable by area name, so that areawise information can be used to answer common questions such as:</p>
+        <ol type="a">
+            <li>Which month of the year 2018 had maximum collisions?</li>
+            <li>What is the percentage distribution of people from different ehtnic background?</li>
+            <li>What is the age range of people involved in collision?</li>
+        </ol>
+
+        <p>
+        Initially these visualizations displays the traffic collision across all the areas in City of Los Angeles and few insights are as follows: </p> 
+        <p> In the year 2018,
+		<ul>
+		<li>Maximum collision occurred in the 77th Street Area</li>
+		<li>Collision ocurring in Month of March were highest</li>
+		<li>Mostly men were responsible for traffic collision</li>
+		<li>Young people in the age range of 21 to 30 yrs were the ones involved in maximum collisions</li>
+		</ul></p>
+		
+		<p><I>* Please click LA Map (Top Right) in navigation to view a Map of Traffic Collisions
+            <br>* Currently, this map doesn't support the area wise filter condition</I></p>
+        <p><U>For better user experience, please use Firefox or Safari Browser</U></p>
+
+		</div>
+		<div id="drop" class="drop" align="center">Filter (By Area): </div>
+		<div class = "blankrow">&nbsp;</div>
+		<div class = "blankrow">&nbsp;</div>
+		<div class = "blankrow">&nbsp;</div>
+        <div class = "row">
+        	<div class="month_lollipop" id= "month_lollipop">By Month</div>
+            <div id="area_barchart" class="area_barchart">By Area<br>
+            </div>
+        </div>
+        <div class = "blankrow">&nbsp;</div>
+        <div class = "row">
+            <div class="gender_piechart" id= "gender_piechart">By Gender
+			<br><br></div>
+            <div class="descent_piechart" id ="descent_piechart" >By Ethnicity
+			<br><br></div>
+        </div>
+       <br>
+	   <br>
+        <div class = "row">
+            
+            <div class="age_barchart" id ="age_barchart" >&nbsp;
+			<br>Statistics by Age Ranges</div>
+        </div>
+
+        <script type="text/javascript">
+
+            var padding = 70;
+
+
+            //SVG for bar chart
+            var svg_barchart = d3.select("div#area_barchart")
+                                .append("svg")
+                                .attr("id","barchart")
+                                .attr("width", document.getElementById("area_barchart").clientWidth)
+                                .attr("height", document.getElementById("area_barchart").clientHeight)
+                                .classed("svg-content", true);
+
+            //SVG for Gender Pie Chart
+            var genderPiechart = d3.select("div#gender_piechart")
+                        .append("center")
+                        .append("svg")
+                        .attr("width", document.getElementById("gender_piechart").clientWidth)
+                        .attr("height", document.getElementById("gender_piechart").clientHeight)
+                        .attr("padding",10)
+                        .classed("svg-content", true);
+
+
+            var descentPiechart = d3.select("div#descent_piechart")
+                        .append("svg")
+                        .attr("width", document.getElementById("descent_piechart").clientWidth)
+                        .attr("height", document.getElementById("descent_piechart").clientHeight)
+                        .append("g")
+                        .classed("svg-content", true);
+     
+
+
+            d3.json("cleaneddata_v1.geojson").then(function(data) {
+
+                function drawGenderPieChart(areaname=null){
+
+                                        var genderDataset = computeAndGetDataset(data.features, "victim_sex",areaname);
+
+                                        var genderCount = genderDataset.map(obj => {
+                                            return obj.count;
+                                        });
+
+                                        var outerRadius = document.getElementById("gender_piechart").clientWidth / 3;
+                                        var innerRadius = 0
+                                     
+                                        
+                                        var arc = d3.arc()
+                                                    .innerRadius(innerRadius)
+                                                    .outerRadius(outerRadius);
+                                        
+                                        var pie = d3.pie();
+                                        
+                                        //Easy colors accessible via a 10-step ordinal scale
+                                        var color = d3.scaleOrdinal()
+															.domain(genderDataset.map(d => d.name))
+															.range(["#4E79A7", "#E15759", "#EDC948"]);
+
+                                        //Create SVG element
+                                        
+                                        
+                                        //Set up groups
+                                        var arcs = genderPiechart.selectAll("g.arc")
+                                                      .data(pie(genderCount))
+                                                      .enter()
+                                                      .append("g")
+                                                      .attr("class", "arc")
+                                                      .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")")
+                                                      .attr("stroke", "black")
+                                                      .style("stroke-width", "1px")
+                                                      ;
+					                                        
+                                        //Draw arc paths
+                                        arcs.append("path")
+                                            .attr("fill", function(d, idx) {
+                                                return color(idx);
+                                            })
+                                            .attr("d", arc)
+											.on("mouseover", function(d, i) {
+											  
+											  arcs.append("text")
+												.attr("dy", "5em")
+												.attr("dx", "5em")
+												.style("text-anchor", "left")
+												.style("font-size", 20)
+												.attr("class","label")
+												.style("fill", function(d,i){return "black";})
+												.text(genderDataset[i].name + ": "  + genderDataset[i].count
+												);
+											  
+										  })
+										  .on("mouseout", function(d) {
+											arcs.select(".label").remove();
+										  });
+										 arcs.append("text")
+                                            .attr("transform", function(d) {
+                                                return "translate(" + arc.centroid(d) + ")";
+                                            })
+                                            .attr("text-anchor", "middle")
+                                            .text(function(d, idx) {
+                                               // console.log(genderDataset[idx].name);
+                                                if (genderDataset[idx].name === "Male"){
+                                                    return "M";   
+                                                }
+                                                else if (genderDataset[idx].name === "Female") {
+                                                    return "F";
+                                                } else {
+                                                    return "X";
+                                                };
+                                                
+                                                // return genderDataset[idx].name;
+                                                
+                                            });
+                                        
+                                        //Labels Code
+
+                         };
+
+
+             function drawDescentPieChart(areaname=null){
+
+                                        var descentDataset = computeAndGetDataset(data.features, "victim_descent",areaname);
+
+                                        	
+                                        var descentCount = descentDataset.map(obj => {
+                                            return obj.count;
+                                        });
+
+                                        var outerRadius = document.getElementById("descent_piechart").clientWidth / 3;
+                                        var innerRadius = document.getElementById("descent_piechart").clientWidth / 6;
+                                       
+                                        
+                                        var arc = d3.arc()
+                                                    .innerRadius(innerRadius)
+                                                    .outerRadius(outerRadius);
+                                        
+                                        var pie = d3.pie();
+                                        
+                                        //Easy colors accessible via a 10-step ordinal scale
+                                        var color = d3.scaleOrdinal()
+                                                    .domain(descentDataset.map(d => d.name))
+                                                    .range(d3.quantize(t => d3.interpolateSpectral(t * 1.2 + 0.3), descentDataset.length).reverse());
+
+                                        var color = d3.scaleOrdinal()
+															.domain(descentDataset.map(d => d.name))
+															.range(["#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F", "#EDC948", "#FF9DA7"]);
+
+                                        //var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+                                        //Create SVG element
+                                        
+                                        
+                                        //Set up groups
+                                        var arcs = descentPiechart.selectAll("g.arc")
+                                                      .data(pie(descentCount))
+                                                      .enter()
+                                                      .append("g")
+                                                      .attr("class", "arc")
+                                                      .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")")
+                                                      .attr("stroke", "black")
+                                                      .style("stroke-width", "1px");
+                                        
+                                        //Draw arc paths
+                                        arcs.append("path")
+                                            .attr("fill", function(d, i) {
+                                                return color(i);
+                                            })
+                                            .attr("d", arc)
+											.on("mouseover", function(d, i) {
+											  arcs.append("text")
+												.attr("dy", "0.5em")
+												.style("text-anchor", "middle")
+												.style("font-size", 20)
+												.attr("class","label")
+												.style("fill", function(d,i){return "black";})
+												.text(descentDataset[i].name + ": "  + descentDataset[i].count 
+												)
+												;
+											  
+										  })
+										  .on("mouseout", function(d) {
+											arcs.select(".label").remove();
+										  });;
+                                        
+                                        //Labels
+                                        arcs.append("text")
+                                            .attr("transform", function(d) {
+                                                return "translate(" + arc.centroid(d) + ")";
+                                            })
+                                            .attr("text-anchor", "middle")
+                                            .text(function(d, idx) {
+                                               // console.log(genderDataset[idx].name);
+                                                if (descentDataset[idx].name === "Hispanic"){
+                                                    return "H";   
+                                                }else if (descentDataset[idx].name === "White") {
+                                                    return "W";
+                                                }else if (descentDataset[idx].name === "Other"){
+                                                    return "O";   
+                                                }else if (descentDataset[idx].name === "Black") {
+                                                    return "B";
+                                                }else if (descentDataset[idx].name === "Unknown"){
+                                                    return "X";   
+                                                }else if (descentDataset[idx].name === "Asian") {
+                                                    return "A";
+                                                }else{
+                                                    return "U";
+                                                };
+                                                
+                                            });
+
+                         };
+
+            //Area data
+
+            function drawBarchart(){
+
+			            var areaDataset = computeAndGetDataset(data.features, "area_name");
+			            var xScale = d3.scaleLinear()
+			                            //.domain([0, maxAreaCount])
+			                            .domain([0, d3.max(areaDataset, function(d) { return d.count })])
+			                            .range([padding, document.getElementById("area_barchart").clientWidth - padding]);
+
+			            var yScale = d3.scaleBand()
+			                            .domain(areaDataset.map(function (d) { return d.name }))
+			                            .range([document.getElementById("area_barchart").clientHeight - padding, padding]);
+
+
+			                /* Create X-Axis on bottom and Y-Axis to left*/
+			            var xAxis = d3.axisBottom(xScale);
+			            var yAxis = d3.axisLeft(yScale);
+
+			            
+			            const setWidth = (inputValue) => {
+			                return xScale(inputValue.count) - padding;
+			            };
+
+			            const setXAttribute = (inputValue) => {
+			                return xScale(inputValue.count);
+			            };
+
+			            
+			            const setYAttribute = (inputValue, index) => {
+			                return  yScale(inputValue.name);
+			            }
+			            
+			            /* function to calculate X Attribute for text label */
+			            const setYTextAttribute = (inputValue) => {
+			                return setYAttribute(inputValue) - 3;
+			            };
+
+			            /* function to return text display value */
+			            const textDisplay = (inputValue) => {
+			                return inputValue;
+			            };
+
+
+			            svg_barchart.selectAll("rect")
+			                        .data(areaDataset)
+			                        .enter()
+			                        .append("rect")
+			                        .attr("width", setWidth)
+			                        .attr("height", 10)
+			                        .attr("x", padding)
+			                        .attr("y", setYAttribute)
+			                        .attr("fill", "steelblue")
+			                        .attr("id",function(d){
+			                            return d.name.split(' ').join('');
+			                        })
+			                        .append("title")
+			                        .text(function (d) {
+			                        	return d.name + ": " + d.count;
+			                        });
+			                        
+						
+			            
+
+			            svg_barchart.append("g")
+			                        .attr("transform", "translate(0," + (document.getElementById("area_barchart").clientHeight - padding) + ")")
+			                        .call(xAxis);
+			            svg_barchart.append("g")
+			                        .attr("transform", "translate(" + padding + "," + 0 + ")")
+			                        .call(yAxis); 
+			            
+			            var selector = d3.select("#drop")
+			                                .append("select")
+			                                .attr("id","dropdown")
+			                                .on("change", handleAreaChange);
+
+
+                        let option_dataset = [{ name: "-Select-", count: 1 }].concat(areaDataset);
+
+
+			            selector.selectAll("option")
+			                        .data(option_dataset)
+			                        .enter()
+									.append("option")
+			                        .attr("value", function(d){
+			                                return d.name;
+			                              })
+									.text(function(d){
+			                                return d.name;
+			                              });
+									
+            };
+
+			function drawLollipopChart(areaname=null) {
+
+				let month_data = computeAndGetDataset(data.features, "month",areaname);
+
+				month_data.sort(function(a,b){
+					let d1 = new Date(Date.parse(a.name + "1, 2019")).getMonth() + 1;
+					let d2 = new Date(Date.parse(b.name + "1, 2019")).getMonth() + 1;
+					return d1 - d2;
+				});
+
+                let margin = {top: 40, right: 30, bottom: 70, left: 100};
+                let width = 460 - margin.left - margin.right;
+                let height = 500 - margin.top - margin.bottom;
+
+                // append the svg object to the body of the page
+                let monthLollipop = d3.select("div#month_lollipop")
+                        .append("svg")
+                        .attr("id","Lollipop")
+                        .attr("width", width + margin.left + margin.right)
+                        .attr("height", height + margin.top + margin.bottom)
+                        .append("g")
+                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                // Add X axis
+                var x = d3.scaleBand()
+                            .range([ 0, width ])
+                            .domain(month_data.map(function(d) { return d.name; }))
+                            .padding(1);
+                
+
+                monthLollipop.append("g")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(d3.axisBottom(x))
+                    .selectAll("text")
+                    .attr("transform", "translate(-10,0)rotate(-45)")
+                    .style("text-anchor", "end");
+
+                // Y axis
+                var y = d3.scaleLinear()
+                        .domain([0, d3.max(month_data, function(d) { return d.count; } )])
+                        .range([height, 0])
+            
+                monthLollipop.append("g")
+                    .call(d3.axisLeft(y))
+
+                // Lines
+                monthLollipop.selectAll("myline")
+                    .data(month_data)
+                    .enter()
+                    .append("line")
+                    .attr("x1", function(d) { return x(d.name); })
+                    .attr("x2", function(d) { return x(d.name); })
+                    .attr("y1", height)
+                    .attr("y2", y(0))
+                    .attr("stroke", "grey")
+
+                // Circles -> start at X=0
+                monthLollipop.selectAll("mycircle")
+                    .data(month_data)
+                    .enter()
+                    .append("circle")
+                    .attr("cx", function(d) { return x(d.name); })
+                    .attr("cy", y(0))
+                    .attr("r", "6")
+                    .style("fill", "steelblue")
+                    .attr("stroke", "black")
+                    .append("title")
+			        .text(function (d) {
+                        	return d.name + ": " + d.count;
+                        });
+
+                // Change the X coordinates of line and circle
+                monthLollipop.selectAll("circle")
+                    .transition()
+                    .duration(1000)
+                    .attr("cy", function(d) { return y(d.count); });
+
+                monthLollipop.selectAll("line")
+                    .transition()
+                    .duration(1000)
+                    .attr("y1", function(d) { return y(d.count); });
+            };
+
+            function drawBarAgechart(areaname=null){
+            			let age_padding = 100;
+
+			            let agedata = computeAgeRangeDataset(data.features, "victim_age",[20,30,40,50,60,70,80,90,100],areaname);
+
+			            agedata.sort(function (a,b) {
+			            	return a.name < b.name;
+			            });
+
+
+			            var yScale = d3.scaleLinear()
+			                            //.domain([0, maxAreaCount])
+			                            .domain([0, d3.max(agedata, function(d) { return d.count })])
+			                            .range([document.getElementById("age_barchart").clientHeight - age_padding, age_padding]);
+
+			            var xScale = d3.scaleBand()
+			                            .domain(agedata.map(function (d) { return d.name }))
+			                            .range([document.getElementById("age_barchart").clientWidth - age_padding, age_padding]);
+
+
+			                /* Create X-Axis on bottom and Y-Axis to left*/
+			            var xAxis = d3.axisBottom(xScale);
+			            var yAxis = d3.axisLeft(yScale);
+
+
+			            
+			            const setHeight = (inputValue) => {
+			                return document.getElementById("age_barchart").clientHeight - yScale(inputValue.count) - age_padding;
+			            };
+
+			            const setYAttribute = (inputValue) => {
+			                return yScale(inputValue.count);
+			            };
+
+			            
+			            const setXAttribute = (inputValue, index) => {
+			                return  xScale(inputValue.name);
+			            }
+			            
+			            /* function to calculate X Attribute for text label */
+			            const setXTextAttribute = (inputValue) => {
+			                return setXAttribute(inputValue) - 3;
+			            };
+
+			            /* function to return text display value */
+			            const textDisplay = (inputValue) => {
+			                return inputValue;
+			            };
+
+			            //SVG for Age Pie Chart
+			            var age_barchart = d3.select("div#age_barchart")
+			                        .append("svg")
+			                        .attr("width", document.getElementById("age_barchart").clientWidth)
+			                        .attr("height", document.getElementById("age_barchart").clientHeight)
+			                        .attr("id","ageChart")
+			                        .append("g")
+			                        .classed("svg-content", true);
+                        
+
+
+			            age_barchart.selectAll("rect")
+			                        .data(agedata)
+			                        .enter()
+			                        .append("rect")
+			                        .attr("height", setHeight)
+			                        .attr("width", 80)
+			                        .attr("y", setYAttribute)
+			                        .attr("x", setXAttribute)
+			                        .attr("fill", "steelblue")
+			                        .attr("id","ageBarChart")
+			                        .append("title")
+			        				.text(function (d) {
+			                        	return d.name + ": " + d.count;
+			                        });
+
+
+			                 
+			            
+
+			            age_barchart.append("g")
+			                        .attr("transform", "translate(0," + (document.getElementById("age_barchart").clientHeight - age_padding) + ")")
+			                        //.attr("transform", "translate(0," + 400 + ")")
+			                        .call(xAxis);
+
+
+			            age_barchart.append("g")
+			                        .attr("transform", "translate(" + age_padding + "," + 0 + ")")
+			                        .call(yAxis); 
+			            
+            };
+
+
+            function updateGenderPieChart(areaSelected){
+                            genderPiechart.selectAll("g.arc")
+                                        .remove();
+                            drawGenderPieChart(areaSelected);
+
+            };
+
+            function updatedescentPieChart(areaSelected){
+                            descentPiechart.selectAll("g.arc")
+                                        .remove();
+                            drawDescentPieChart(areaSelected);
+
+            };
+
+            function updateAgeChart(areaSelected){
+                            d3.selectAll("#ageChart")
+                                         .remove();
+
+                            drawBarAgechart(areaSelected);
+
+            };
+
+            function updateMonthChart(areaSelected){
+                            d3.selectAll("#Lollipop")
+                                        .remove();
+                            console.log(areaSelected);
+                            drawLollipopChart(areaSelected);
+
+            };
+
+            function handleAreaChange(d){selection = document.getElementById("dropdown");
+
+
+                                            let selectedValue = selection.value;
+
+
+                                            svg_barchart.selectAll("rect")
+                                                        .attr("fill", "steelblue");
+
+
+                                            if (selectedValue === "-Select-"){
+                                                selectedValue = null;
+                                            }
+                                            else{
+
+                                            svg_barchart.select("rect#" + selectedValue.split(' ').join(''))
+                                                        .transition()
+                                                        .duration(1000)
+                                                        .attr("fill", "red");
+                                            }
+
+                                            updateGenderPieChart(selectedValue);
+                                            updatedescentPieChart(selectedValue);
+                                            updateMonthChart(selectedValue);
+                                            updateAgeChart(selectedValue);
+
+                                         };
+			drawBarchart();
+            
+
+            drawGenderPieChart();
+
+            drawDescentPieChart();
+
+            drawBarAgechart();
+
+
+            drawLollipopChart();
+
+
+            });
+
+
+
+        </script>
+    </body>
+</html>
